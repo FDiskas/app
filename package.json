@@ -1,15 +1,15 @@
 {
   "name": "applink",
   "version": "1.0.0",
-  "main": "src/server/index.ts",
+  "main": "src/server/index.tsx",
   "type": "module",
   "scripts": {
-    "dev:server": "bun --watch src/server/index.ts",
+    "dev:server": "bun --watch src/server/index.tsx",
     "dev:client": "vite --host",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "vite build && prisma generate",
     "test": "bun test",
-    "start": "bun src/server/index.ts"
+    "start": "bun src/server/index.tsx"
   },
   "dependencies": {
     "@orpc/client": "^1.14.2",

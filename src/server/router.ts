@@ -22,35 +22,15 @@ export const router = os.router({
   syncApp: os
     .input(z.object({
       name: z.string(),
-      bundleId: z.string().optional(),
       platform: z.enum(["ios", "android"]),
     }))
     .handler(async ({ input }) => {
       const targetPlatform = input.platform === "ios" ? "android" : "ios";
-      if (targetPlatform === "android") {
-        const results = await gplay.search({ term: input.name, num: 1 });
-        if (results.length > 0) {
-          return {
-            id: results[0].appId,
-            name: results[0].title,
-            icon: results[0].icon,
-            developer: results[0].developer,
-          };
-        }
-      } else {
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(input.name)}&entity=software&limit=1`);
-        const data: any = await response.json();
-        if (data.results.length > 0) {
-          const app = data.results[0];
-          return {
-            id: app.trackId.toString(),
-            name: app.trackName,
-            icon: app.artworkUrl100,
-            developer: app.artistName,
-          };
-        }
-      }
-      return null;
+      const results = targetPlatform === "android" 
+        ? await searchAndroid(input.name, gplay)
+        : await searchIos(input.name);
+      
+      return results.length > 0 ? results[0] : null;
     }),
 
   createShortLink: os
@@ -65,22 +45,22 @@ export const router = os.router({
       gaId: z.string().optional(),
     }))
     .handler(async ({ input }) => {
-      // Check for existing combination first
-      const existing = await prisma.shortLink.findFirst({
-        where: {
-          androidId: input.androidId || null,
-          iosId: input.iosId || null,
-        }
-      });
+      // Return existing link if IDs match
+      if (input.androidId || input.iosId) {
+          const existing = await prisma.shortLink.findFirst({
+            where: {
+              androidId: input.androidId || null,
+              iosId: input.iosId || null,
+            }
+          });
 
-      if (existing) {
-        return { 
-          success: true, 
-          slug: existing.slug, 
-          iosName: existing.iosName,
-          androidName: existing.androidName,
-          isExisting: true,
-        };
+          if (existing) {
+            return { 
+              ...existing,
+              success: true, 
+              isExisting: true,
+            };
+          }
       }
 
       const slug = input.slug || nanoid(6);
@@ -99,10 +79,8 @@ export const router = os.router({
       });
 
       return { 
+        ...link,
         success: true, 
-        slug: link.slug, 
-        iosName: link.iosName,
-        androidName: link.androidName,
         isExisting: false,
       };
     }),
