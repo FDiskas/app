@@ -1,5 +1,8 @@
 # dependencies (bun install)
 node_modules
+prisma/client
+prisma/dev.db
+prisma/dev.db-journal
 
 # output
 out

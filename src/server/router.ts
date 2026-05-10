@@ -1,11 +1,9 @@
 import { os } from "@orpc/server";
 import { z } from "zod";
 import gplay from "google-play-scraper";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "./db";
 import { nanoid } from "nanoid";
 import { searchIos, searchAndroid } from "./stores";
-
-const prisma = new PrismaClient();
 
 export const router = os.router({
   searchStore: os
@@ -59,27 +57,53 @@ export const router = os.router({
     .input(z.object({
       slug: z.string().optional(),
       androidId: z.string().optional(),
+      androidName: z.string().optional(),
+      androidIcon: z.string().optional(),
       iosId: z.string().optional(),
+      iosName: z.string().optional(),
+      iosIcon: z.string().optional(),
       gaId: z.string().optional(),
     }))
     .handler(async ({ input }) => {
+      // Check for existing combination first
+      const existing = await prisma.shortLink.findFirst({
+        where: {
+          androidId: input.androidId || null,
+          iosId: input.iosId || null,
+        }
+      });
+
+      if (existing) {
+        return { 
+          success: true, 
+          slug: existing.slug, 
+          iosName: existing.iosName,
+          androidName: existing.androidName,
+          isExisting: true,
+        };
+      }
+
       const slug = input.slug || nanoid(6);
-      const editToken = nanoid(12);
 
       const link = await prisma.shortLink.create({
         data: {
           slug,
           androidId: input.androidId,
+          androidName: input.androidName,
+          androidIcon: input.androidIcon,
           iosId: input.iosId,
+          iosName: input.iosName,
+          iosIcon: input.iosIcon,
           gaId: input.gaId,
-          editToken,
         },
       });
 
       return { 
         success: true, 
         slug: link.slug, 
-        editToken: link.editToken 
+        iosName: link.iosName,
+        androidName: link.androidName,
+        isExisting: false,
       };
     }),
 
@@ -90,34 +114,7 @@ export const router = os.router({
         where: { slug: input.slug },
       });
     }),
-  updateShortLink: os
-    .input(z.object({
-      slug: z.string(),
-      editToken: z.string(),
-      androidId: z.string().optional(),
-      iosId: z.string().optional(),
-      gaId: z.string().optional(),
-    }))
-    .handler(async ({ input }) => {
-      const link = await prisma.shortLink.findUnique({
-        where: { slug: input.slug },
-      });
 
-      if (!link || link.editToken !== input.editToken) {
-        throw new Error("Unauthorized");
-      }
-
-      const updated = await prisma.shortLink.update({
-        where: { slug: input.slug },
-        data: {
-          androidId: input.androidId,
-          iosId: input.iosId,
-          gaId: input.gaId,
-        },
-      });
-
-      return { success: true, slug: updated.slug };
-    }),
 });
 
 export type AppRouter = typeof router;

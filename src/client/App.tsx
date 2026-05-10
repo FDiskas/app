@@ -13,52 +13,44 @@ export default function App() {
   const [createdLink, setCreatedLink] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Handle secure edit link import
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (path.startsWith("/edit/") && token) {
-      const slug = path.split("/")[2];
-      const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
-      const exists = saved.find((l: any) => l.slug === slug);
-      
-      if (!exists) {
-        // We'll fetch the link details via oRPC in a real scenario
-        // For now, let's just save the token so the user can "own" it
-        const newEntry = { slug, editToken: token, date: new Date().toISOString(), imported: true };
-        const updatedHistory = [newEntry, ...saved];
-        setHistory(updatedHistory);
-        localStorage.setItem("applinks", JSON.stringify(updatedHistory));
-        
-        // Clean the URL
-        window.history.replaceState({}, document.title, "/");
-        
-        // Load it into preview
-        handleLoadLink(newEntry);
-      }
-    }
-
-    const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
-    setHistory(saved);
-  }, []);
-
   const handleLoadLink = async (link: any) => {
     setLoading(true);
     try {
       const details = await orpc.getLink({ slug: link.slug });
       if (details) {
-        // Fetch app details for preview
+        // Use stored metadata for preview
         if (details.iosId) {
-            const res = await orpc.searchStore({ query: details.iosId, platform: "ios" });
-            if (res.length > 0) setSelectedIos(res[0]);
+          setSelectedIos({
+            id: details.iosId,
+            name: details.iosName,
+            icon: details.iosIcon,
+          });
+        } else {
+          setSelectedIos(null);
         }
         if (details.androidId) {
-            const res = await orpc.searchStore({ query: details.androidId, platform: "android" });
-            if (res.length > 0) setSelectedAndroid(res[0]);
+          setSelectedAndroid({
+            id: details.androidId,
+            name: details.androidName,
+            icon: details.androidIcon,
+          });
+        } else {
+          setSelectedAndroid(null);
         }
-        setCreatedLink({ ...details, editToken: link.editToken });
+        setCreatedLink(details);
+        
+        // Update history entry if it was imported/missing meta
+        const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
+        const idx = saved.findIndex((l: any) => l.slug === link.slug);
+        if (idx !== -1) {
+            saved[idx] = { 
+                ...saved[idx], 
+                iosName: details.iosName, 
+                androidName: details.androidName 
+            };
+            setHistory(saved);
+            localStorage.setItem("applinks", JSON.stringify(saved));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -66,6 +58,11 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
+    setHistory(saved);
+  }, []);
 
   const handleSearch = async () => {
     if (!query) return;
@@ -98,30 +95,32 @@ export default function App() {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      if (createdLink && createdLink.editToken) {
-        // Update existing
-        await orpc.updateShortLink({
-          slug: createdLink.slug,
-          editToken: createdLink.editToken,
-          iosId: selectedIos?.id,
-          androidId: selectedAndroid?.id,
-        });
-        alert("Link updated successfully!");
+      // Create or retrieve existing
+      const res = await orpc.createShortLink({
+        iosId: selectedIos?.id,
+        iosName: selectedIos?.name,
+        iosIcon: selectedIos?.icon,
+        androidId: selectedAndroid?.id,
+        androidName: selectedAndroid?.name,
+        androidIcon: selectedAndroid?.icon,
+      });
+      setCreatedLink(res);
+      
+      const newEntry = { 
+        ...res, 
+        date: new Date().toISOString()
+      };
+      
+      const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
+      const exists = saved.find((l: any) => l.slug === res.slug);
+      
+      if (!exists) {
+        const updatedHistory = [newEntry, ...saved];
+        setHistory(updatedHistory);
+        localStorage.setItem("applinks", JSON.stringify(updatedHistory));
       } else {
-        // Create new
-        const res = await orpc.createShortLink({
-          iosId: selectedIos?.id,
-          androidId: selectedAndroid?.id,
-        });
-        setCreatedLink(res);
-        
-        const newEntry = { 
-          ...res, 
-          iosName: selectedIos?.name, 
-          androidName: selectedAndroid?.name,
-          date: new Date().toISOString()
-        };
-        const updatedHistory = [newEntry, ...history];
+        // Just move to top
+        const updatedHistory = [newEntry, ...saved.filter((l: any) => l.slug !== res.slug)];
         setHistory(updatedHistory);
         localStorage.setItem("applinks", JSON.stringify(updatedHistory));
       }
@@ -150,9 +149,6 @@ export default function App() {
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white">AppLink</h1>
           </div>
-          <button className="text-sm font-medium bg-slate-900 border border-slate-800 px-5 py-2.5 rounded-full hover:bg-slate-800 transition-all">
-            Login
-          </button>
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -160,7 +156,7 @@ export default function App() {
           <div className="lg:col-span-7 space-y-8">
             <section>
               <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">Connect Your Apps</h2>
-              <p className="text-slate-400 text-lg">One QR code for both stores. Smart redirection based on device.</p>
+              <p className="text-slate-400 text-lg">One link for both stores. Smart redirection based on device.</p>
             </section>
 
             <section className="bg-slate-900/40 border border-slate-800/60 p-1 rounded-2xl">
@@ -327,21 +323,6 @@ export default function App() {
                         </button>
                       </div>
 
-                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest text-center pt-2">Secure Edit Link (Share to edit elsewhere)</p>
-                      <div className="flex gap-2">
-                        <input 
-                          readOnly 
-                          value={`${window.location.origin}/edit/${createdLink.slug}?token=${createdLink.editToken}`}
-                          className="flex-1 bg-slate-950/50 border border-slate-800/50 rounded-xl px-4 py-2 text-[10px] text-slate-500 font-mono"
-                        />
-                        <button 
-                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/edit/${createdLink.slug}?token=${createdLink.editToken}`)}
-                          className="bg-slate-900 p-2 rounded-xl hover:bg-slate-800 transition-all text-slate-600 hover:text-slate-400"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
-
                       <button 
                         onClick={() => { setCreatedLink(null); setSelectedAndroid(null); setSelectedIos(null); setQuery(""); }}
                         className="w-full text-slate-500 hover:text-slate-300 text-sm font-medium py-2 transition-colors"
@@ -356,7 +337,7 @@ export default function App() {
                     disabled={(!selectedIos && !selectedAndroid) || loading}
                     className="w-full bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-600 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-violet-600/20"
                   >
-                    {loading ? "Saving..." : (createdLink && createdLink.editToken ? "Update Link" : "Generate Link")}
+                    {loading ? "Saving..." : "Generate Link"}
                   </button>
                 )}
               </section>
