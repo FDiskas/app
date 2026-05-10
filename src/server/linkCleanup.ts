@@ -3,9 +3,11 @@ import { StoreService } from "./storeService";
 import { ShortLinkStatus } from "@prisma/client";
 import type { ShortLink } from "@prisma/client";
 
-// Debounce cleanup operations to avoid repeated checks
-const cleanupQueue = new Set<string>();
 const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const MAX_TRACKED_LINKS = 5000;
+
+const lastCleanupAt = new Map<string, number>();
+const inFlightCleanup = new Set<string>();
 
 async function checkAvailability(platform: "ios" | "android", id: string) {
   return platform === "ios"
@@ -13,24 +15,51 @@ async function checkAvailability(platform: "ios" | "android", id: string) {
     : StoreService.isAndroidAppAvailable(id);
 }
 
-function scheduleCleanup(linkId: string) {
-  if (cleanupQueue.has(linkId)) return;
+function pruneTrackerIfNeeded() {
+  if (lastCleanupAt.size < MAX_TRACKED_LINKS) return;
 
-  cleanupQueue.add(linkId);
+  const entries = [...lastCleanupAt.entries()];
+  entries.sort((a, b) => a[1] - b[1]);
 
-  setTimeout(async () => {
-    cleanupQueue.delete(linkId);
-    try {
-      const link = await prisma.shortLink.findUnique({
-        where: { id: linkId },
-      });
-      if (link) {
-        await performCleanup(link);
-      }
-    } catch {
-      // Silently fail for background cleanup
+  const toRemove = Math.ceil(MAX_TRACKED_LINKS * 0.2);
+  for (let i = 0; i < toRemove; i++) {
+    const linkId = entries[i]?.[0];
+    if (!linkId) break;
+    lastCleanupAt.delete(linkId);
+  }
+}
+
+function shouldCleanupNow(linkId: string) {
+  const now = Date.now();
+  const lastRun = lastCleanupAt.get(linkId);
+
+  if (lastRun && now - lastRun < CLEANUP_INTERVAL) {
+    return false;
+  }
+
+  pruneTrackerIfNeeded();
+  lastCleanupAt.set(linkId, now);
+  return true;
+}
+
+async function scheduleCleanup(linkId: string) {
+  if (!shouldCleanupNow(linkId)) return;
+  if (inFlightCleanup.has(linkId)) return;
+
+  inFlightCleanup.add(linkId);
+
+  try {
+    const link = await prisma.shortLink.findUnique({
+      where: { id: linkId },
+    });
+    if (link) {
+      await performCleanup(link);
     }
-  }, CLEANUP_INTERVAL);
+  } catch {
+    // Silently fail for background cleanup
+  } finally {
+    inFlightCleanup.delete(linkId);
+  }
 }
 
 async function performCleanup(link: ShortLink) {
@@ -76,9 +105,7 @@ async function performCleanup(link: ShortLink) {
 }
 
 export async function cleanupShortLink(link: ShortLink) {
-  // Schedule cleanup in background instead of awaiting it
-  scheduleCleanup(link.id);
+  void scheduleCleanup(link.id);
 
-  // Return the link immediately without waiting for availability checks
   return link;
 }

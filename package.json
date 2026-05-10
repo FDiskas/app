@@ -9,7 +9,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "vite build && prisma generate",
     "test": "bun test",
-    "start": "bun x prisma migrate deploy && bun src/server/index.tsx"
+    "start": "bun x prisma migrate deploy && bun --smol src/server/index.tsx"
   },
   "dependencies": {
     "@orpc/client": "^1.14.2",

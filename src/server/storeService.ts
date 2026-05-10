@@ -1,10 +1,56 @@
 import type { AppResult } from "../shared/types";
-import gplay from "google-play-scraper";
 import {
   searchIos as fetchIosResults,
   searchAndroid as fetchAndroidResults,
 } from "./stores";
 import { isAndroidAppAvailableFromStore } from "./androidAvailability";
+
+const AVAILABILITY_CACHE_TTL_MS = 15 * 60 * 1000;
+const MAX_AVAILABILITY_CACHE_SIZE = 2000;
+const EXTERNAL_FETCH_TIMEOUT_MS = 4000;
+
+const availabilityCache = new Map<
+  string,
+  { value: boolean; expiresAt: number }
+>();
+type GooglePlayScraper = (typeof import("google-play-scraper"))["default"];
+let gplayPromise: Promise<GooglePlayScraper> | null = null;
+
+async function getGooglePlayScraper(): Promise<GooglePlayScraper> {
+  if (!gplayPromise) {
+    gplayPromise = import("google-play-scraper").then(
+      (module) => module.default,
+    );
+  }
+
+  return gplayPromise;
+}
+
+function cacheGet(key: string): boolean | null {
+  const entry = availabilityCache.get(key);
+  if (!entry) return null;
+
+  if (Date.now() > entry.expiresAt) {
+    availabilityCache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function cacheSet(key: string, value: boolean) {
+  if (availabilityCache.size >= MAX_AVAILABILITY_CACHE_SIZE) {
+    const firstKey = availabilityCache.keys().next().value;
+    if (firstKey) {
+      availabilityCache.delete(firstKey);
+    }
+  }
+
+  availabilityCache.set(key, {
+    value,
+    expiresAt: Date.now() + AVAILABILITY_CACHE_TTL_MS,
+  });
+}
 
 export class StoreService {
   /**
@@ -44,21 +90,47 @@ export class StoreService {
    * Search Google Play Store
    */
   private static async searchAndroid(query: string): Promise<AppResult[]> {
+    const gplay = await getGooglePlayScraper();
     return fetchAndroidResults(query, gplay);
   }
 
   static async isIosAppAvailable(appId: string): Promise<boolean> {
+    const cacheKey = `ios:${appId}`;
+    const cached = cacheGet(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
     const response = await fetch(
       `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}`,
+      { signal: AbortSignal.timeout(EXTERNAL_FETCH_TIMEOUT_MS) },
     );
+
+    if (!response.ok) {
+      cacheSet(cacheKey, false);
+      return false;
+    }
+
     const data = (await response.json()) as { resultCount?: number };
-    return (data.resultCount ?? 0) > 0;
+    const available = (data.resultCount ?? 0) > 0;
+    cacheSet(cacheKey, available);
+    return available;
   }
 
   static async isAndroidAppAvailable(appId: string): Promise<boolean> {
+    const cacheKey = `android:${appId}`;
+    const cached = cacheGet(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
     try {
-      return await isAndroidAppAvailableFromStore(gplay, appId);
+      const gplay = await getGooglePlayScraper();
+      const available = await isAndroidAppAvailableFromStore(gplay, appId);
+      cacheSet(cacheKey, available);
+      return available;
     } catch {
+      cacheSet(cacheKey, false);
       return false;
     }
   }
