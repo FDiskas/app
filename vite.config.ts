@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:3000",
+      // Proxy everything that is not root, not /api, and doesn't look like a file/vite internal
+      "^/(?!api|@vite|@react-refresh|@fs|@id|node_modules|src|index\\.html|$|.*\\.).*": "http://localhost:3000",
     },
   },
   root: "src/client",

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { orpc } from "./lib/orpc";
+import { orpc, orpcUtils } from "./lib/orpc";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { QRCodeCanvas } from "qrcode.react";
-import { Smartphone, Apple, Search, Sync, Check, Copy, ExternalLink, History, Trash2 } from "lucide-react";
+import { Smartphone, Apple, Search, RefreshCw, Check, Copy, ExternalLink, History, Trash2 } from "lucide-react";
 
 export default function App() {
   const [query, setQuery] = useState("");
@@ -9,16 +10,17 @@ export default function App() {
   const [results, setResults] = useState<any[]>([]);
   const [selectedIos, setSelectedIos] = useState<any>(null);
   const [selectedAndroid, setSelectedAndroid] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [createdLink, setCreatedLink] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
 
-  const handleLoadLink = async (link: any) => {
-    setLoading(true);
-    try {
-      const details = await orpc.getLink({ slug: link.slug });
+  // Mutations
+  const searchMutation = useMutation(orpcUtils.searchStore.mutationOptions({
+    onSuccess: (data) => setResults(data),
+  }));
+
+  const getLinkMutation = useMutation(orpcUtils.getLink.mutationOptions({
+    onSuccess: (details, variables) => {
       if (details) {
-        // Use stored metadata for preview
         if (details.iosId) {
           setSelectedIos({
             id: details.iosId,
@@ -41,7 +43,7 @@ export default function App() {
         
         // Update history entry if it was imported/missing meta
         const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
-        const idx = saved.findIndex((l: any) => l.slug === link.slug);
+        const idx = saved.findIndex((l: any) => l.slug === variables.slug);
         if (idx !== -1) {
             saved[idx] = { 
                 ...saved[idx], 
@@ -52,58 +54,20 @@ export default function App() {
             localStorage.setItem("applinks", JSON.stringify(saved));
         }
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }));
 
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
-    setHistory(saved);
-  }, []);
-
-  const handleSearch = async () => {
-    if (!query) return;
-    setLoading(true);
-    try {
-      const data = await orpc.searchStore({ query, platform });
-      setResults(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSync = async (app: any, from: "ios" | "android") => {
-    setLoading(true);
-    try {
-      const match = await orpc.syncApp({ name: app.name, platform: from });
+  const syncAppMutation = useMutation(orpcUtils.syncApp.mutationOptions({
+    onSuccess: (match, variables) => {
       if (match) {
-        if (from === "ios") setSelectedAndroid(match);
+        if (variables.platform === "ios") setSelectedAndroid(match);
         else setSelectedIos(match);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }));
 
-  const handleCreate = async () => {
-    setLoading(true);
-    try {
-      // Create or retrieve existing
-      const res = await orpc.createShortLink({
-        iosId: selectedIos?.id,
-        iosName: selectedIos?.name,
-        iosIcon: selectedIos?.icon,
-        androidId: selectedAndroid?.id,
-        androidName: selectedAndroid?.name,
-        androidIcon: selectedAndroid?.icon,
-      });
+  const createLinkMutation = useMutation(orpcUtils.createShortLink.mutationOptions({
+    onSuccess: (res) => {
       setCreatedLink(res);
       
       const newEntry = { 
@@ -119,17 +83,44 @@ export default function App() {
         setHistory(updatedHistory);
         localStorage.setItem("applinks", JSON.stringify(updatedHistory));
       } else {
-        // Just move to top
         const updatedHistory = [newEntry, ...saved.filter((l: any) => l.slug !== res.slug)];
         setHistory(updatedHistory);
         localStorage.setItem("applinks", JSON.stringify(updatedHistory));
       }
-    } catch (err) {
+    },
+    onError: (err) => {
       console.error(err);
       alert("Failed to save link.");
-    } finally {
-      setLoading(false);
     }
+  }));
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("applinks") || "[]");
+    setHistory(saved);
+  }, []);
+
+  const handleSearch = () => {
+    if (!query) return;
+    searchMutation.mutate({ query, platform });
+  };
+
+  const handleLoadLink = (link: any) => {
+    getLinkMutation.mutate({ slug: link.slug });
+  };
+
+  const handleSync = (app: any, from: "ios" | "android") => {
+    syncAppMutation.mutate({ name: app.name, platform: from });
+  };
+
+  const handleCreate = () => {
+    createLinkMutation.mutate({
+      iosId: selectedIos?.id,
+      iosName: selectedIos?.name,
+      iosIcon: selectedIos?.icon,
+      androidId: selectedAndroid?.id,
+      androidName: selectedAndroid?.name,
+      androidIcon: selectedAndroid?.icon,
+    });
   };
 
   const clearHistory = () => {
@@ -137,6 +128,36 @@ export default function App() {
     localStorage.removeItem("applinks");
   };
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand("copy");
+        } catch (err) {
+          console.error("Fallback copy failed", err);
+        }
+        textArea.remove();
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy", err);
+    }
+  };
+
+  const isLoading = searchMutation.isPending || getLinkMutation.isPending || syncAppMutation.isPending || createLinkMutation.isPending;
   const fullUrl = createdLink ? `${window.location.origin}/${createdLink.slug}` : "";
 
   return (
@@ -189,10 +210,10 @@ export default function App() {
                 </div>
                 <button 
                   onClick={handleSearch}
-                  disabled={loading}
+                  disabled={isLoading}
                   className="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white px-8 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-violet-600/20"
                 >
-                  {loading ? "Searching..." : "Search"}
+                  {searchMutation.isPending ? "Searching..." : "Search"}
                 </button>
               </div>
             </section>
@@ -316,10 +337,10 @@ export default function App() {
                           className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-violet-400 font-mono"
                         />
                         <button 
-                          onClick={() => navigator.clipboard.writeText(fullUrl)}
-                          className="bg-slate-800 p-3 rounded-xl hover:bg-slate-700 transition-all text-slate-400 hover:text-white"
+                          onClick={() => handleCopy(fullUrl)}
+                          className={`p-3 rounded-xl transition-all ${copied ? "bg-green-500/20 text-green-400" : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"}`}
                         >
-                          <Copy className="w-5 h-5" />
+                          {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                         </button>
                       </div>
 
@@ -334,10 +355,10 @@ export default function App() {
                 ) : (
                   <button 
                     onClick={handleCreate}
-                    disabled={(!selectedIos && !selectedAndroid) || loading}
+                    disabled={(!selectedIos && !selectedAndroid) || isLoading}
                     className="w-full bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-600 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-violet-600/20"
                   >
-                    {loading ? "Saving..." : "Generate Link"}
+                    {createLinkMutation.isPending ? "Saving..." : "Generate Link"}
                   </button>
                 )}
               </section>
