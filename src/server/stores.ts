@@ -1,34 +1,61 @@
-export interface AppResult {
-  id: string;
-  name: string;
-  icon: string;
-  developer: string;
-  bundleId?: string;
+import type { AppResult } from "../shared/types";
+import type { GooglePlayScraper } from "google-play-scraper";
+
+interface ITunesResult {
+  trackId: number;
+  trackName: string;
+  artworkUrl100: string;
+  artistName: string;
+  bundleId: string;
 }
 
-export async function searchIos(query: string): Promise<AppResult[]> {
-  const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&limit=5`);
-  const data = await response.json() as { results: any[] };
-  return data.results.map((app: any) => ({
+interface ITunesResponse {
+  results: ITunesResult[];
+}
+
+interface GooglePlayResult {
+  appId: string;
+  title: string;
+  icon: string;
+  developer: string;
+}
+
+function mapIosResult(app: ITunesResult): AppResult {
+  return {
     id: app.trackId.toString(),
     name: app.trackName,
     icon: app.artworkUrl100,
     developer: app.artistName,
     bundleId: app.bundleId,
-  }));
+  };
 }
 
-export async function searchAndroid(query: string, gplay: any): Promise<AppResult[]> {
-  const results = await gplay.search({
-    term: query,
-    num: 5,
-  }) as any[];
-  
-  return results.map((app) => ({
+function mapAndroidResult(app: GooglePlayResult): AppResult {
+  return {
     id: app.appId,
     name: app.title,
     icon: app.icon,
     developer: app.developer,
     bundleId: app.appId,
-  }));
+  };
+}
+
+export async function searchIos(query: string): Promise<AppResult[]> {
+  const response = await fetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&limit=5`,
+  );
+  const data = (await response.json()) as ITunesResponse;
+  return data.results.map(mapIosResult);
+}
+
+export async function searchAndroid(
+  query: string,
+  gplay: GooglePlayScraper,
+): Promise<AppResult[]> {
+  const results = (await gplay.search({
+    term: query,
+    num: 5,
+  })) as GooglePlayResult[];
+
+  return results.map(mapAndroidResult);
 }
