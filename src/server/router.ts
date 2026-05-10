@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "./db";
 import { nanoid } from "nanoid";
 import { StoreService } from "./storeService";
+import { cleanupShortLink } from "./linkCleanup";
 
 const MAX_GENERATED_SLUG_ATTEMPTS = 5;
 
@@ -141,9 +142,15 @@ export const router = os.router({
   getLink: os
     .input(z.object({ slug: z.string() }))
     .handler(async ({ input }) => {
-      return await prisma.shortLink.findUnique({
+      const link = await prisma.shortLink.findUnique({
         where: { slug: input.slug },
       });
+
+      if (!link) {
+        return null;
+      }
+
+      return await cleanupShortLink(link);
     }),
 });
 

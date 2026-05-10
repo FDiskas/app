@@ -1,10 +1,14 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "./client"
 }
 
 datasource db {
   provider = "sqlite"
+}
+
+enum ShortLinkStatus {
+  ACTIVE
+  PARTIAL
 }
 
 model ShortLink {
@@ -17,6 +21,8 @@ model ShortLink {
   iosName      String?
   iosIcon      String?
   gaId         String?  // Google Analytics tracking
+  status       ShortLinkStatus @default(ACTIVE)
+  failCount    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

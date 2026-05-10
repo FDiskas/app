@@ -4,6 +4,7 @@ import {
   searchIos as fetchIosResults,
   searchAndroid as fetchAndroidResults,
 } from "./stores";
+import { isAndroidAppAvailableFromStore } from "./androidAvailability";
 
 export class StoreService {
   /**
@@ -44,5 +45,21 @@ export class StoreService {
    */
   private static async searchAndroid(query: string): Promise<AppResult[]> {
     return fetchAndroidResults(query, gplay);
+  }
+
+  static async isIosAppAvailable(appId: string): Promise<boolean> {
+    const response = await fetch(
+      `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}`,
+    );
+    const data = (await response.json()) as { resultCount?: number };
+    return (data.resultCount ?? 0) > 0;
+  }
+
+  static async isAndroidAppAvailable(appId: string): Promise<boolean> {
+    try {
+      return await isAndroidAppAvailableFromStore(gplay, appId);
+    } catch {
+      return false;
+    }
   }
 }

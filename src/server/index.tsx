@@ -9,6 +9,7 @@ import { router } from "./router";
 import { prisma } from "./db";
 import { getRedirectUrl } from "./utils";
 import { RedirectPage } from "./RedirectPage";
+import { cleanupShortLink } from "./linkCleanup";
 
 const app = new Hono();
 
@@ -62,19 +63,25 @@ app.get("/:slug", async (c) => {
 
     // If slug exists in DB, render redirect page
     if (link) {
+        const cleanedLink = await cleanupShortLink(link);
+
+        if (!cleanedLink) {
+            return c.html(serveSPAFallback());
+        }
+
         const userAgent = c.req.header("user-agent") || "";
         const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
-        const redirectUrl = isMobile ? getRedirectUrl(userAgent, link) : null;
+        const redirectUrl = isMobile ? getRedirectUrl(userAgent, cleanedLink) : null;
 
-        const appName = link.iosName || link.androidName || "App";
-        const appIcon = link.iosIcon || link.androidIcon || "";
+        const appName = cleanedLink.iosName || cleanedLink.androidName || "App";
+        const appIcon = cleanedLink.iosIcon || cleanedLink.androidIcon || "";
 
         const html = renderToString(
             <RedirectPage 
                 appName={appName}
                 appIcon={appIcon}
-                iosId={link.iosId}
-                androidId={link.androidId}
+                iosId={cleanedLink.iosId}
+                androidId={cleanedLink.androidId}
                 redirectUrl={redirectUrl}
             />
         );

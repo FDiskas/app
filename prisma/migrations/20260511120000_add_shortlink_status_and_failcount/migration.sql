@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ShortLink" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE "ShortLink" ADD COLUMN "failCount" INTEGER NOT NULL DEFAULT 0;

@@ -5,6 +5,7 @@
 ## 🚀 The Idea
 
 Sharing separate links for the iOS App Store and Google Play Store is cumbersome. AppLink solves this by providing a single **Universal Link** that intelligently redirects users based on their device:
+
 - **iPhone/iPad Users**: Automatically redirected to the Apple App Store.
 - **Android Users**: Automatically redirected to the Google Play Store (via `market://` links for instant opening).
 - **Desktop Users**: Presented with a beautiful landing page featuring buttons for both stores and a scanable QR code.
@@ -13,6 +14,7 @@ Sharing separate links for the iOS App Store and Google Play Store is cumbersome
 
 - **Store Search**: Search for any app on the App Store or Google Play directly within the interface.
 - **Smart Redirection**: Device-aware routing ensures users land in the right place instantly.
+- **Link Health Cleanup**: On link retrieval and redirect, AppLink verifies store availability, tracks failures, marks links as `PARTIAL` when one store is missing, and deletes links only when both iOS and Android targets are unavailable.
 - **Dynamic QR Codes**: Instant QR code generation for every universal link created.
 - **Local History**: Your recently created links are saved in your browser for quick access.
 - **Premium Aesthetics**: Built with a sleek, dark-mode first design using Tailwind CSS and Lucide icons.
@@ -48,9 +50,11 @@ Sharing separate links for the iOS App Store and Google Play Store is cumbersome
 ### Development
 
 Run both the server and client in development mode:
+
 ```bash
 bun dev
 ```
+
 - **Client**: `http://localhost:5173`
 - **Server/API**: `http://localhost:3000`
 
