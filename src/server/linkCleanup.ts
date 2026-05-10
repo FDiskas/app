@@ -15,9 +15,9 @@ async function checkAvailability(platform: "ios" | "android", id: string) {
 
 function scheduleCleanup(linkId: string) {
   if (cleanupQueue.has(linkId)) return;
-  
+
   cleanupQueue.add(linkId);
-  
+
   setTimeout(async () => {
     cleanupQueue.delete(linkId);
     try {
@@ -78,7 +78,7 @@ async function performCleanup(link: ShortLink) {
 export async function cleanupShortLink(link: ShortLink) {
   // Schedule cleanup in background instead of awaiting it
   scheduleCleanup(link.id);
-  
+
   // Return the link immediately without waiting for availability checks
   return link;
 }

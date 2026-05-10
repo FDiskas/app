@@ -4,12 +4,13 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { renderToString } from "react-dom/server";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { existsSync } from "fs";
 import { router } from "./router";
-import { prisma } from "./db";
+import { ensureShortLinkSchemaCompatibility, prisma } from "./db";
 import { getRedirectUrl } from "./utils";
 import { RedirectPage } from "./RedirectPage";
 import { cleanupShortLink } from "./linkCleanup";
+
+await ensureShortLinkSchemaCompatibility();
 
 const app = new Hono();
 
