@@ -17,12 +17,17 @@ const app = new Hono();
 // import.meta.dir gives us src/server, so we go up to src, then up to root, then into dist/client
 const distPath = join(import.meta.dir, "../../dist/client");
 
+// Cache for index.html to avoid reading from disk every request
+let cachedIndexHtml: string | null = null;
+
 // Helper function to serve SPA fallback
 const serveSPAFallback = () => {
+    if (cachedIndexHtml) return cachedIndexHtml;
+    
     try {
         const indexPath = join(distPath, "index.html");
-        const indexHtml = readFileSync(indexPath, "utf-8");
-        return indexHtml;
+        cachedIndexHtml = readFileSync(indexPath, "utf-8");
+        return cachedIndexHtml;
     } catch (e) {
         throw new Error(`index.html not found at ${join(distPath, "index.html")}. Did you run 'bun run build'?`);
     }
@@ -86,6 +91,7 @@ app.get("/:slug", async (c) => {
             />
         );
 
+        // Return immediately, allow garbage collection
         return c.html(`<!DOCTYPE html>${html}`);
     }
 

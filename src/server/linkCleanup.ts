@@ -3,13 +3,37 @@ import { StoreService } from "./storeService";
 import { ShortLinkStatus } from "@prisma/client";
 import type { ShortLink } from "@prisma/client";
 
+// Debounce cleanup operations to avoid repeated checks
+const cleanupQueue = new Set<string>();
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 async function checkAvailability(platform: "ios" | "android", id: string) {
   return platform === "ios"
     ? StoreService.isIosAppAvailable(id)
     : StoreService.isAndroidAppAvailable(id);
 }
 
-export async function cleanupShortLink(link: ShortLink) {
+function scheduleCleanup(linkId: string) {
+  if (cleanupQueue.has(linkId)) return;
+  
+  cleanupQueue.add(linkId);
+  
+  setTimeout(async () => {
+    cleanupQueue.delete(linkId);
+    try {
+      const link = await prisma.shortLink.findUnique({
+        where: { id: linkId },
+      });
+      if (link) {
+        await performCleanup(link);
+      }
+    } catch {
+      // Silently fail for background cleanup
+    }
+  }, CLEANUP_INTERVAL);
+}
+
+async function performCleanup(link: ShortLink) {
   const iosCheck = link.iosId ? checkAvailability("ios", link.iosId) : null;
   const androidCheck = link.androidId
     ? checkAvailability("android", link.androidId)
@@ -48,5 +72,13 @@ export async function cleanupShortLink(link: ShortLink) {
     });
   }
 
+  return link;
+}
+
+export async function cleanupShortLink(link: ShortLink) {
+  // Schedule cleanup in background instead of awaiting it
+  scheduleCleanup(link.id);
+  
+  // Return the link immediately without waiting for availability checks
   return link;
 }
