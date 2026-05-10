@@ -2,21 +2,20 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { orpcUtils } from "../lib/orpc";
 import { AppResult, CreatedLink } from "../types";
-import { useHistory } from "./useHistory";
 
 interface UseLinkGenerationProps {
   onSuccess?: (link: CreatedLink) => void;
+  saveToHistory?: (link: CreatedLink) => void;
 }
 
 export function useLinkGeneration(props?: UseLinkGenerationProps) {
-  const { saveToHistory } = useHistory();
   const [createdLink, setCreatedLink] = useState<CreatedLink | null>(null);
 
   const createLinkMutation = useMutation(
     orpcUtils.createShortLink.mutationOptions({
       onSuccess: (res) => {
         setCreatedLink(res);
-        saveToHistory(res);
+        props?.saveToHistory?.(res);
         props?.onSuccess?.(res);
       },
       onError: (err) => {
@@ -44,10 +43,15 @@ export function useLinkGeneration(props?: UseLinkGenerationProps) {
     setCreatedLink(null);
   };
 
+  const showCreatedLink = (link: CreatedLink) => {
+    setCreatedLink(link);
+  };
+
   return {
     createdLink,
     isGenerating: createLinkMutation.isPending,
     generateLink,
     resetLink,
+    showCreatedLink,
   };
 }

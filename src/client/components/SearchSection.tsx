@@ -15,8 +15,8 @@ export function SearchSection({ platform, setPlatform, query, setQuery, onSearch
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">Connect Your Apps</h2>
-        <p className="text-slate-400 text-lg">One link for both stores. Smart redirection based on device.</p>
+        <h2 className="text-4xl font-bold text-white mb-3 tracking-tight">One Link, All Platforms</h2>
+        <p className="text-slate-400 text-lg">Create universal app links that intelligently route users to the iOS App Store or Google Play Store based on their device.</p>
       </section>
 
       <section className="bg-slate-900/40 border border-slate-800/60 p-1 rounded-2xl">

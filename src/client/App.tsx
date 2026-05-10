@@ -1,6 +1,7 @@
 import React from "react";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { Disclaimer } from "./components/Disclaimer";
 import { SearchSection } from "./components/SearchSection";
 import { AppList } from "./components/AppList";
 import { LinkPreview } from "./components/LinkPreview";
@@ -10,6 +11,7 @@ import { useLinkGeneration } from "./hooks/useLinkGeneration";
 import { useLinkRetrieval } from "./hooks/useLinkRetrieval";
 import { useClipboard } from "./hooks/useClipboard";
 import { useHistory } from "./hooks/useHistory";
+import { CreatedLink, HistoryLink } from "./types";
 
 export default function App() {
   const {
@@ -26,21 +28,78 @@ export default function App() {
     handleSelect,
     clearSelection,
   } = useAppSearch();
-  const { createdLink, isGenerating, generateLink, resetLink } = useLinkGeneration();
+  const { history, clearHistory, saveToHistory } = useHistory();
+  const { createdLink, isGenerating, generateLink, resetLink, showCreatedLink } = useLinkGeneration({
+    saveToHistory,
+  });
   const { isRetrieving, retrieveLink } = useLinkRetrieval({
     onSuccess: (ios, android) => {
       setSelectedApps(ios, android);
-    }
+    },
+    onMissing: () => {
+      resetLink();
+    },
   });
-  const { copied, copy } = useClipboard();
-  const { history, clearHistory } = useHistory();
+  const { copiedText, copy } = useClipboard();
 
   const isLoading = isSearching || isGenerating || isRetrieving;
+
+  const clearGeneratedPreview = () => {
+    if (createdLink) {
+      resetLink();
+    }
+  };
+
+  const handleQueryChange = (value: string) => {
+    clearGeneratedPreview();
+    setQuery(value);
+  };
+
+  const handlePlatformChange = (value: typeof platform) => {
+    clearGeneratedPreview();
+    setPlatform(value);
+  };
+
+  const handleAppSelection = (app: Parameters<typeof handleSelect>[0]) => {
+    clearGeneratedPreview();
+    handleSelect(app);
+  };
+
+  const handleSearchRequest = () => {
+    clearGeneratedPreview();
+    handleSearch();
+  };
 
   const handleReset = () => {
     resetLink();
     clearSelection();
     setQuery("");
+  };
+
+  const toCreatedLink = (link: HistoryLink): CreatedLink => {
+    const createdAt = new Date(link.createdAt ?? link.date);
+    const updatedAt = new Date(link.updatedAt ?? createdAt);
+
+    return {
+      id: link.id ?? link.slug,
+      slug: link.slug,
+      androidId: link.androidId ?? null,
+      androidName: link.androidName ?? null,
+      androidIcon: link.androidIcon ?? null,
+      iosId: link.iosId ?? null,
+      iosName: link.iosName ?? null,
+      iosIcon: link.iosIcon ?? null,
+      gaId: link.gaId ?? null,
+      createdAt,
+      updatedAt,
+      success: true,
+      isExisting: true,
+    };
+  };
+
+  const handleHistoryLoad = (link: HistoryLink) => {
+    showCreatedLink(toCreatedLink(link));
+    retrieveLink(link.slug);
   };
 
   return (
@@ -52,22 +111,24 @@ export default function App() {
           <div className="lg:col-span-7 space-y-12">
             <SearchSection 
               platform={platform}
-              setPlatform={setPlatform}
+              setPlatform={handlePlatformChange}
               query={query}
-              setQuery={setQuery}
-              onSearch={handleSearch}
+              setQuery={handleQueryChange}
+              onSearch={handleSearchRequest}
               isLoading={isSearching}
             />
 
             <AppList 
               apps={results}
-              onSelect={handleSelect}
+              onSelect={handleAppSelection}
             />
 
             <History 
               history={history}
-              onLoad={(link) => retrieveLink(link.slug)}
+              onLoad={handleHistoryLoad}
               onClear={clearHistory}
+              onCopy={copy}
+              copiedUrl={copiedText}
             />
           </div>
 
@@ -79,7 +140,7 @@ export default function App() {
                 created: createdLink,
               }}
               isLoading={isLoading}
-              copied={copied}
+              copiedUrl={copiedText}
               onGenerate={() => generateLink(selectedIos, selectedAndroid)}
               onReset={handleReset}
               onCopy={copy}
@@ -87,6 +148,7 @@ export default function App() {
           </div>
         </main>
         
+        <Disclaimer />
         <Footer />
       </div>
     </div>

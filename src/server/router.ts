@@ -39,8 +39,7 @@ export const router = os.router({
       const appName = input.name.trim();
       if (!appName) return null;
 
-      const targetPlatform = input.platform === "ios" ? "android" : "ios";
-      return await StoreService.searchByName(appName, targetPlatform);
+      return await StoreService.searchByName(appName, input.platform);
     }),
 
   createShortLink: os

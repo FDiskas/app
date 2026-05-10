@@ -42,7 +42,7 @@ app.get("/assets/*", (c) => {
     const filePath = join(distPath, c.req.path);
     try {
         const file = Bun.file(filePath);
-        return c.newResponse(file);
+        return new Response(file);
     } catch {
         return c.notFound();
     }

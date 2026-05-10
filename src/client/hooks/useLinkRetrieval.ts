@@ -5,6 +5,7 @@ import { useHistory } from "./useHistory";
 
 interface UseLinkRetrievalProps {
   onSuccess?: (iosApp: AppResult | null, androidApp: AppResult | null) => void;
+  onMissing?: () => void;
 }
 
 export function useLinkRetrieval(props?: UseLinkRetrievalProps) {
@@ -38,6 +39,7 @@ export function useLinkRetrieval(props?: UseLinkRetrievalProps) {
             androidName: details.androidName ?? undefined,
           });
         } else {
+          props?.onMissing?.();
           removeFromHistory(variables.slug);
           alert(
             "This link no longer exists and has been removed from your history.",

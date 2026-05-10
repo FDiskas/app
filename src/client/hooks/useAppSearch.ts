@@ -13,7 +13,7 @@ export function useAppSearch() {
   const [selectedAndroid, setSelectedAndroid] = useState<AppResult | null>(
     null,
   );
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchMutation = useMutation(
     orpcUtils.searchStore.mutationOptions({

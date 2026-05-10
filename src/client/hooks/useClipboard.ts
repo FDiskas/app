@@ -2,6 +2,7 @@ import { useState } from "react";
 
 export function useClipboard() {
   const [copied, setCopied] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   const copy = async (text: string) => {
     try {
@@ -19,11 +20,15 @@ export function useClipboard() {
         textArea.remove();
       }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedText(text);
+      setTimeout(() => {
+        setCopied(false);
+        setCopiedText(null);
+      }, 2000);
     } catch (err) {
       console.error("Failed to copy", err);
     }
   };
 
-  return { copied, copy };
+  return { copied, copiedText, copy };
 }

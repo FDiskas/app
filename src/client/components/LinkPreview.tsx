@@ -12,7 +12,7 @@ interface LinkPreviewProps {
     created: CreatedLink | null;
   };
   isLoading: boolean;
-  copied: boolean;
+  copiedUrl?: string | null;
   onGenerate: () => void;
   onReset: () => void;
   onCopy: (url: string) => void;
@@ -21,7 +21,7 @@ interface LinkPreviewProps {
 export function LinkPreview({
   link,
   isLoading,
-  copied,
+  copiedUrl,
   onGenerate,
   onReset,
   onCopy,
@@ -30,6 +30,7 @@ export function LinkPreview({
     link;
   const fullUrl = createdLink ? `${window.location.origin}/${createdLink.slug}` : "";
   const hasSelection = selectedIos || selectedAndroid;
+  const isCopied = Boolean(fullUrl) && copiedUrl === fullUrl;
 
   return (
     <div className="sticky top-12">
@@ -57,7 +58,7 @@ export function LinkPreview({
             url={fullUrl}
             onCopy={onCopy}
             onReset={onReset}
-            copied={copied}
+            copied={isCopied}
           />
         ) : (
           <button 

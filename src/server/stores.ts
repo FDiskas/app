@@ -1,5 +1,4 @@
 import type { AppResult } from "../shared/types";
-import type { GooglePlayScraper } from "google-play-scraper";
 
 interface ITunesResult {
   trackId: number;
@@ -50,7 +49,9 @@ export async function searchIos(query: string): Promise<AppResult[]> {
 
 export async function searchAndroid(
   query: string,
-  gplay: GooglePlayScraper,
+  gplay: {
+    search: (options: { term: string; num: number }) => Promise<unknown>;
+  },
 ): Promise<AppResult[]> {
   const results = (await gplay.search({
     term: query,

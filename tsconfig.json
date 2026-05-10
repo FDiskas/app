@@ -20,6 +20,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "types": [
+      "bun",
+      "vite/client"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
