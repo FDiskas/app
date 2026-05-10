@@ -4,6 +4,7 @@ import { Footer } from "./components/Footer";
 import { Disclaimer } from "./components/Disclaimer";
 import { SearchSection } from "./components/SearchSection";
 import { AppList } from "./components/AppList";
+import { LinkStatsCard } from "./components/LinkStatsCard";
 import { LinkPreview } from "./components/LinkPreview";
 import { History } from "./components/History";
 import { useAppSearch } from "./hooks/useAppSearch";
@@ -136,18 +137,22 @@ export default function App() {
           </div>
 
           <div className="lg:col-span-5">
-            <LinkPreview 
-              link={{
-                ios: selectedIos,
-                android: selectedAndroid,
-                created: createdLink,
-              }}
-              isLoading={isLoading}
-              copiedUrl={copiedText}
-              onGenerate={() => generateLink(selectedIos, selectedAndroid)}
-              onReset={handleReset}
-              onCopy={copy}
-            />
+            <div className="sticky top-12 space-y-6">
+              <LinkStatsCard history={history} />
+
+              <LinkPreview 
+                link={{
+                  ios: selectedIos,
+                  android: selectedAndroid,
+                  created: createdLink,
+                }}
+                isLoading={isLoading}
+                copiedUrl={copiedText}
+                onGenerate={() => generateLink(selectedIos, selectedAndroid)}
+                onReset={handleReset}
+                onCopy={copy}
+              />
+            </div>
           </div>
         </main>
         
