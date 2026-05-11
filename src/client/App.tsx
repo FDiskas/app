@@ -138,8 +138,6 @@ export default function App() {
 
           <div className="lg:col-span-5">
             <div className="sticky top-12 space-y-6">
-              <LinkStatsCard history={history} />
-
               <LinkPreview 
                 link={{
                   ios: selectedIos,
