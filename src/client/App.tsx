@@ -4,7 +4,6 @@ import { Footer } from "./components/Footer";
 import { Disclaimer } from "./components/Disclaimer";
 import { SearchSection } from "./components/SearchSection";
 import { AppList } from "./components/AppList";
-import { LinkStatsCard } from "./components/LinkStatsCard";
 import { LinkPreview } from "./components/LinkPreview";
 import { History } from "./components/History";
 import { useAppSearch } from "./hooks/useAppSearch";
