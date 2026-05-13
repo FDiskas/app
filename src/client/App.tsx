@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { Disclaimer } from "./components/Disclaimer";
@@ -42,6 +42,7 @@ export default function App() {
     },
   });
   const { copiedText, copy } = useClipboard();
+  const linkPreviewRef = useRef<HTMLDivElement>(null);
 
   const isLoading = isSearching || isGenerating || isRetrieving;
 
@@ -64,6 +65,7 @@ export default function App() {
   const handleAppSelection = (app: Parameters<typeof handleSelect>[0]) => {
     clearGeneratedPreview();
     handleSelect(app);
+    linkPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleSearchRequest = () => {
@@ -135,8 +137,8 @@ export default function App() {
             />
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="sticky top-12 space-y-6">
+          <div className="lg:col-span-5" ref={linkPreviewRef}>
+            <div className="sticky top-12 space-y-6 scroll-mt-12">
               <LinkPreview 
                 link={{
                   ios: selectedIos,
