@@ -152,6 +152,11 @@ export const router = os.router({
 
       return await cleanupShortLink(link);
     }),
+
+  getStats: os.handler(async () => {
+    const total = await prisma.shortLink.count();
+    return { total };
+  }),
 });
 
 export type AppRouter = typeof router;
