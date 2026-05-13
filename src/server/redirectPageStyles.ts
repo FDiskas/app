@@ -163,4 +163,21 @@ export const REDIRECT_PAGE_STYLES = `
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.15);
   }
+
+  .footer {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .footer a {
+    text-decoration: none;
+  }
+
+  .footer a:hover {
+    color: var(--text);
+  }
 `;

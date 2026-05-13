@@ -5,6 +5,7 @@ import { orpcUtils } from "../lib/orpc";
 export function Footer() {
   const { data } = useQuery(
     orpcUtils.getStats.queryOptions({
+      input: {},
       staleTime: 60_000,
     }),
   );

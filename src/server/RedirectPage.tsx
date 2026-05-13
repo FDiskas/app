@@ -1,5 +1,4 @@
 import React from "react";
-import { Footer } from "../client/components/Footer";
 import { REDIRECT_PAGE_STYLES } from "./redirectPageStyles";
 
 interface RedirectPageProps {
@@ -56,7 +55,11 @@ export function RedirectPage({ appName, appIcon, iosId, androidId, redirectUrl }
             )}
           </div>
         </div>
-        <Footer />
+        <footer className="footer">
+          Powered by <a href="/">AppLink</a>
+          {" · "}
+          <a href="https://github.com/FDiskas/app" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </footer>
       </body>
     </html>
   );

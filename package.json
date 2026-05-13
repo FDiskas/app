@@ -6,7 +6,8 @@
   "scripts": {
     "dev:server": "bun --watch src/server/index.tsx",
     "dev:client": "vite --host",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "db:migrate": "bun x prisma migrate dev",
+    "dev": "bun x prisma generate && bun x prisma migrate deploy && concurrently \"bun run dev:server\" \"bun run dev:client\"",
     "build": "vite build && prisma generate",
     "test": "bun test",
     "start": "bun x prisma migrate deploy && bun --smol src/server/index.tsx"

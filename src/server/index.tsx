@@ -37,11 +37,18 @@ const serveSPAFallback = () => {
 // oRPC handler
 const orpcHandler = new RPCHandler(router);
 app.all("/api/rpc/*", async (c) => {
-    const { matched, response } = await orpcHandler.handle(c.req.raw, {
-        prefix: "/api/rpc",
-    });
-    if (matched) return response;
-    return c.notFound();
+    try {
+        const { matched, response } = await orpcHandler.handle(c.req.raw, {
+            prefix: "/api/rpc",
+        });
+        if (matched) return response;
+        return c.notFound();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        console.error(`[oRPC] ${c.req.method} ${c.req.path} failed:`, err);
+        return c.json({ error: message, stack }, 500);
+    }
 });
 
 // Explicitly serve static assets from dist/client
