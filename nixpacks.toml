@@ -1,5 +1,3 @@
-providers = ["bun"]
-
 [phases.setup]
 # bun runs everything; openssl is required by Prisma's query engine at runtime.
 nixPkgs = ["bun", "openssl"]
