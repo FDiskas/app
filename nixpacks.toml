@@ -1,0 +1,18 @@
+providers = ["bun"]
+
+[phases.setup]
+# bun runs everything; openssl is required by Prisma's query engine at runtime.
+nixPkgs = ["bun", "openssl"]
+
+[phases.install]
+cmds = ["bun install --frozen-lockfile"]
+
+[phases.build]
+# `bun run build` => `vite build && prisma generate`
+# (builds the client into dist/client and generates the Prisma client).
+cmds = ["bun run build"]
+
+[start]
+# `bun run start` => `prisma migrate deploy && bun --smol src/server/index.tsx`
+# Applies pending migrations, then boots the Hono server on port 3000.
+cmd = "bun run start"
