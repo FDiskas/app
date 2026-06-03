@@ -49,7 +49,9 @@ const handler = (
   router as {
     createShortLink: {
       ["~orpc"]: {
-        handler: (args: { input: CreateShortLinkInput }) => Promise<CreateShortLinkResult>;
+        handler: (args: {
+          input: CreateShortLinkInput;
+        }) => Promise<CreateShortLinkResult>;
       };
     };
   }
@@ -68,13 +70,14 @@ describe("ShortLink Creation Logic", () => {
     mockPrisma.shortLink.findUnique.mockImplementation(() =>
       Promise.resolve(null),
     );
-    mockPrisma.shortLink.create.mockImplementation((data: ShortLinkCreateArgs) =>
-      Promise.resolve({
-        id: "1",
-        slug: data.data.slug,
-        androidId: data.data.androidId ?? null,
-        iosId: data.data.iosId ?? null,
-      }),
+    mockPrisma.shortLink.create.mockImplementation(
+      (data: ShortLinkCreateArgs) =>
+        Promise.resolve({
+          id: "1",
+          slug: data.data.slug,
+          androidId: data.data.androidId ?? null,
+          iosId: data.data.iosId ?? null,
+        }),
     );
     mockNanoid.mockImplementation(() => "abc123");
   });

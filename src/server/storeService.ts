@@ -71,7 +71,10 @@ async function resolveCachedAvailability(
     cacheSet(cacheKey, available);
     return available;
   } catch (error) {
-    console.warn(`[StoreService] Availability check failed for ${cacheKey}`, error);
+    console.warn(
+      `[StoreService] Availability check failed for ${cacheKey}`,
+      error,
+    );
     cacheSet(cacheKey, false);
     return false;
   }

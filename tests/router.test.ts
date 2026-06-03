@@ -2,11 +2,12 @@ import { expect, test, describe, mock } from "bun:test";
 import { searchIos, searchAndroid } from "../src/server/stores";
 
 globalThis.fetch = (input: string | URL | Request) => {
-  const url = typeof input === "string"
-    ? input
-    : input instanceof URL
-      ? input.toString()
-      : input.url;
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
 
   if (url.includes("itunes.apple.com")) {
     return Promise.resolve(
@@ -50,7 +51,7 @@ describe("Store Search Utilities", () => {
         ]),
       ),
     };
-    
+
     const result = await searchAndroid("test", mockGplay);
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("Mock Android");

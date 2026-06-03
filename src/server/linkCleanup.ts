@@ -61,7 +61,10 @@ export async function cleanupShortLink(link: ShortLink) {
 
   const cleanupTask = performCleanup(link)
     .catch((error) => {
-      console.warn(`[cleanupShortLink] Failed to clean up link ${link.id}`, error);
+      console.warn(
+        `[cleanupShortLink] Failed to clean up link ${link.id}`,
+        error,
+      );
       return link;
     })
     .finally(() => {

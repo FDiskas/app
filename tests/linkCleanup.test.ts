@@ -44,12 +44,13 @@ describe("link cleanup", () => {
     mockStoreService.isIosAppAvailable.mockReset();
     mockStoreService.isAndroidAppAvailable.mockReset();
 
-    mockPrisma.shortLink.update.mockImplementation((data: ShortLinkUpdateArgs) =>
-      Promise.resolve({
-        id: data.where.id,
-        status: data.data.status,
-        failCount: data.data.failCount?.increment ?? 0,
-      }),
+    mockPrisma.shortLink.update.mockImplementation(
+      (data: ShortLinkUpdateArgs) =>
+        Promise.resolve({
+          id: data.where.id,
+          status: data.data.status,
+          failCount: data.data.failCount?.increment ?? 0,
+        }),
     );
     mockStoreService.isIosAppAvailable.mockResolvedValue(true);
     mockStoreService.isAndroidAppAvailable.mockResolvedValue(true);
