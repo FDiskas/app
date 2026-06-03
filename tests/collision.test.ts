@@ -1,10 +1,29 @@
 import { expect, test, describe, mock, beforeEach } from "bun:test";
 
+type ShortLinkCreateArgs = {
+  data: {
+    slug: string;
+    androidId?: string | null;
+    iosId?: string | null;
+  };
+};
+
+type CreateShortLinkInput = {
+  slug?: string;
+  androidId?: string;
+  iosId?: string;
+};
+
+type CreateShortLinkResult = {
+  slug: string;
+  isExisting: boolean;
+};
+
 const mockPrisma = {
   shortLink: {
     findFirst: mock(() => Promise.resolve(null)),
     findUnique: mock(() => Promise.resolve(null)),
-    create: mock((data: any) =>
+    create: mock((data: ShortLinkCreateArgs) =>
       Promise.resolve({
         id: "1",
         slug: data.data.slug,
@@ -26,7 +45,15 @@ mock.module("nanoid", () => ({
 }));
 
 const { router } = await import("../src/server/router");
-const handler = (router as any).createShortLink["~orpc"].handler;
+const handler = (
+  router as {
+    createShortLink: {
+      ["~orpc"]: {
+        handler: (args: { input: CreateShortLinkInput }) => Promise<CreateShortLinkResult>;
+      };
+    };
+  }
+).createShortLink["~orpc"].handler;
 
 describe("ShortLink Creation Logic", () => {
   beforeEach(() => {
@@ -41,7 +68,7 @@ describe("ShortLink Creation Logic", () => {
     mockPrisma.shortLink.findUnique.mockImplementation(() =>
       Promise.resolve(null),
     );
-    mockPrisma.shortLink.create.mockImplementation((data: any) =>
+    mockPrisma.shortLink.create.mockImplementation((data: ShortLinkCreateArgs) =>
       Promise.resolve({
         id: "1",
         slug: data.data.slug,

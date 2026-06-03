@@ -1,4 +1,4 @@
-import type { ShortLink } from "@prisma/client";
+import type { ShortLink } from "../shared/types";
 export type { AppResult, Platform } from "../shared/types";
 
 export interface HistoryLink extends Partial<ShortLink> {

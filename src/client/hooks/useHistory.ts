@@ -10,7 +10,8 @@ function readStoredHistory(): HistoryLink[] {
 
     const parsed = JSON.parse(raw) as HistoryLink[];
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error) {
+    console.warn("[useHistory] Failed to parse stored history", error);
     return [];
   }
 }

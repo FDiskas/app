@@ -11,8 +11,7 @@ import { useLinkGeneration } from "./hooks/useLinkGeneration";
 import { useLinkRetrieval } from "./hooks/useLinkRetrieval";
 import { useClipboard } from "./hooks/useClipboard";
 import { useHistory } from "./hooks/useHistory";
-import { CreatedLink, HistoryLink } from "./types";
-import type { ShortLinkStatus } from "@prisma/client";
+import { AppResult, CreatedLink, HistoryLink, Platform } from "./types";
 
 export default function App() {
   const {
@@ -57,12 +56,12 @@ export default function App() {
     setQuery(value);
   };
 
-  const handlePlatformChange = (value: typeof platform) => {
+  const handlePlatformChange = (value: Platform) => {
     clearGeneratedPreview();
     setPlatform(value);
   };
 
-  const handleAppSelection = (app: Parameters<typeof handleSelect>[0]) => {
+  const handleAppSelection = (app: AppResult) => {
     clearGeneratedPreview();
     handleSelect(app);
     linkPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -93,7 +92,7 @@ export default function App() {
       iosName: link.iosName ?? null,
       iosIcon: link.iosIcon ?? null,
       gaId: link.gaId ?? null,
-      status: (link.status ?? "ACTIVE") as ShortLinkStatus,
+      status: link.status ?? "ACTIVE",
       failCount: link.failCount ?? 0,
       createdAt,
       updatedAt,

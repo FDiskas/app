@@ -1,10 +1,7 @@
+import type { GooglePlayAvailabilityStore } from "./googlePlayTypes";
+
 export async function isAndroidAppAvailableFromStore(
-  store: {
-    default?: {
-      app?: (options: { appId: string }) => Promise<unknown>;
-    };
-    app?: (options: { appId: string }) => Promise<unknown>;
-  },
+  store: GooglePlayAvailabilityStore,
   appId: string,
 ): Promise<boolean> {
   const lookup = store.default?.app ?? store.app;
@@ -16,7 +13,11 @@ export async function isAndroidAppAvailableFromStore(
   try {
     await lookup({ appId });
     return true;
-  } catch {
+  } catch (error) {
+    console.warn(
+      `[StoreService] Android availability lookup failed for ${appId}`,
+      error,
+    );
     return false;
   }
 }

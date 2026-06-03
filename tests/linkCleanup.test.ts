@@ -1,10 +1,18 @@
 import { expect, test, describe, mock, beforeEach } from "bun:test";
 import { ShortLinkStatus } from "@prisma/client";
 
+type ShortLinkUpdateArgs = {
+  where: { id: string };
+  data: {
+    status?: ShortLinkStatus;
+    failCount?: { increment: number };
+  };
+};
+
 const mockPrisma = {
   shortLink: {
     delete: mock(() => Promise.resolve(null)),
-    update: mock((data: any) =>
+    update: mock((data: ShortLinkUpdateArgs) =>
       Promise.resolve({
         id: data.where.id,
         status: data.data.status,
@@ -36,7 +44,7 @@ describe("link cleanup", () => {
     mockStoreService.isIosAppAvailable.mockReset();
     mockStoreService.isAndroidAppAvailable.mockReset();
 
-    mockPrisma.shortLink.update.mockImplementation((data: any) =>
+    mockPrisma.shortLink.update.mockImplementation((data: ShortLinkUpdateArgs) =>
       Promise.resolve({
         id: data.where.id,
         status: data.data.status,

@@ -3,32 +3,30 @@ import { useState } from "react";
 export function useClipboard() {
   const [copied, setCopied] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const copy = async (text: string) => {
+    if (!navigator.clipboard || !window.isSecureContext) {
+      setCopyError("Clipboard is unavailable in this browser context.");
+      return false;
+    }
+
     try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        textArea.remove();
-      }
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setCopiedText(text);
+      setCopyError(null);
       setTimeout(() => {
         setCopied(false);
         setCopiedText(null);
       }, 2000);
+      return true;
     } catch (err) {
       console.error("Failed to copy", err);
+      setCopyError("Failed to copy text to clipboard.");
+      return false;
     }
   };
 
-  return { copied, copiedText, copy };
+  return { copied, copiedText, copyError, copy };
 }

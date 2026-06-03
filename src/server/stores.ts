@@ -1,4 +1,6 @@
 import type { AppResult } from "../shared/types";
+import { z } from "zod";
+import type { GooglePlaySearchClient } from "./googlePlayTypes";
 
 interface ITunesResult {
   trackId: number;
@@ -8,16 +10,26 @@ interface ITunesResult {
   bundleId: string;
 }
 
-interface ITunesResponse {
-  results: ITunesResult[];
-}
+const itunesResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      trackId: z.number(),
+      trackName: z.string(),
+      artworkUrl100: z.string(),
+      artistName: z.string(),
+      bundleId: z.string(),
+    }),
+  ),
+});
 
-interface GooglePlayResult {
-  appId: string;
-  title: string;
-  icon: string;
-  developer: string;
-}
+const googlePlayResultSchema = z.object({
+  appId: z.string(),
+  title: z.string(),
+  icon: z.string(),
+  developer: z.string(),
+});
+
+type GooglePlayResult = z.infer<typeof googlePlayResultSchema>;
 
 function mapIosResult(app: ITunesResult): AppResult {
   return {
@@ -43,20 +55,21 @@ export async function searchIos(query: string): Promise<AppResult[]> {
   const response = await fetch(
     `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&limit=5`,
   );
-  const data = (await response.json()) as ITunesResponse;
+
+  const data = itunesResponseSchema.parse(await response.json());
   return data.results.map(mapIosResult);
 }
 
 export async function searchAndroid(
   query: string,
-  gplay: {
-    search: (options: { term: string; num: number }) => Promise<unknown>;
-  },
+  gplay: GooglePlaySearchClient,
 ): Promise<AppResult[]> {
-  const results = (await gplay.search({
+  const rawResults = await gplay.search({
     term: query,
     num: 5,
-  })) as GooglePlayResult[];
+  });
+
+  const results = z.array(googlePlayResultSchema).parse(rawResults);
 
   return results.map(mapAndroidResult);
 }

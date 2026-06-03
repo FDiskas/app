@@ -1,3 +1,5 @@
+export type { ShortLink } from "@prisma/client";
+
 export interface AppResult {
   id: string;
   name: string;

@@ -14,14 +14,10 @@ await ensureShortLinkSchemaCompatibility();
 
 const app = new Hono();
 
-// Get the correct path to dist/client
-// import.meta.dir gives us src/server, so we go up to src, then up to root, then into dist/client
 const distPath = join(import.meta.dir, "../../dist/client");
 
-// Cache for index.html to avoid reading from disk every request
 let cachedIndexHtml: string | null = null;
 
-// Helper function to serve SPA fallback
 const serveSPAFallback = () => {
     if (cachedIndexHtml) return cachedIndexHtml;
     
@@ -34,7 +30,6 @@ const serveSPAFallback = () => {
     }
 };
 
-// oRPC handler
 const orpcHandler = new RPCHandler(router);
 app.all("/api/rpc/*", async (c) => {
     try {
@@ -51,30 +46,26 @@ app.all("/api/rpc/*", async (c) => {
     }
 });
 
-// Explicitly serve static assets from dist/client
-app.get("/assets/*", (c) => {
+app.get("/assets/*", async (c) => {
     const filePath = join(distPath, c.req.path);
-    try {
-        const file = Bun.file(filePath);
-        return new Response(file);
-    } catch {
+    const file = Bun.file(filePath);
+
+    if (!(await file.exists())) {
         return c.notFound();
     }
+
+    return new Response(file);
 });
 
-// Serve other static files (favicon, etc.)
 app.use("/", serveStatic({ root: distPath }));
 
-// Redirect logic: if slug exists in DB, serve from server; otherwise serve SPA
 app.get("/:slug", async (c) => {
     const slug = c.req.param("slug");
 
-    // Check if slug exists as a short link in database
     const link = await prisma.shortLink.findUnique({
         where: { slug },
     });
 
-    // If slug exists in DB, render redirect page
     if (link) {
         const cleanedLink = await cleanupShortLink(link);
 
@@ -99,15 +90,12 @@ app.get("/:slug", async (c) => {
             />
         );
 
-        // Return immediately, allow garbage collection
         return c.html(`<!DOCTYPE html>${html}`);
     }
 
-    // If slug doesn't exist in DB, serve SPA fallback
     return c.html(serveSPAFallback());
 });
 
-// SPA fallback for multi-segment paths (e.g., /edit/something, /path/to/route)
 app.get("*", (c) => {
     return c.html(serveSPAFallback());
 });

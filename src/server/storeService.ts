@@ -1,9 +1,11 @@
 import type { AppResult } from "../shared/types";
+import { z } from "zod";
 import {
   searchIos as fetchIosResults,
   searchAndroid as fetchAndroidResults,
 } from "./stores";
 import { isAndroidAppAvailableFromStore } from "./androidAvailability";
+import type { GooglePlayScraper } from "./googlePlayTypes";
 
 const AVAILABILITY_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_AVAILABILITY_CACHE_SIZE = 2000;
@@ -13,8 +15,11 @@ const availabilityCache = new Map<
   string,
   { value: boolean; expiresAt: number }
 >();
-type GooglePlayScraper = (typeof import("google-play-scraper"))["default"];
 let gplayPromise: Promise<GooglePlayScraper> | null = null;
+
+const iosLookupSchema = z.object({
+  resultCount: z.number().optional(),
+});
 
 async function getGooglePlayScraper(): Promise<GooglePlayScraper> {
   if (!gplayPromise) {
@@ -50,6 +55,26 @@ function cacheSet(key: string, value: boolean) {
     value,
     expiresAt: Date.now() + AVAILABILITY_CACHE_TTL_MS,
   });
+}
+
+async function resolveCachedAvailability(
+  cacheKey: string,
+  check: () => Promise<boolean>,
+): Promise<boolean> {
+  const cached = cacheGet(cacheKey);
+  if (cached !== null) {
+    return cached;
+  }
+
+  try {
+    const available = await check();
+    cacheSet(cacheKey, available);
+    return available;
+  } catch (error) {
+    console.warn(`[StoreService] Availability check failed for ${cacheKey}`, error);
+    cacheSet(cacheKey, false);
+    return false;
+  }
 }
 
 export class StoreService {
@@ -96,42 +121,26 @@ export class StoreService {
 
   static async isIosAppAvailable(appId: string): Promise<boolean> {
     const cacheKey = `ios:${appId}`;
-    const cached = cacheGet(cacheKey);
-    if (cached !== null) {
-      return cached;
-    }
+    return resolveCachedAvailability(cacheKey, async () => {
+      const response = await fetch(
+        `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}`,
+        { signal: AbortSignal.timeout(EXTERNAL_FETCH_TIMEOUT_MS) },
+      );
 
-    const response = await fetch(
-      `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}`,
-      { signal: AbortSignal.timeout(EXTERNAL_FETCH_TIMEOUT_MS) },
-    );
+      if (!response.ok) {
+        return false;
+      }
 
-    if (!response.ok) {
-      cacheSet(cacheKey, false);
-      return false;
-    }
-
-    const data = (await response.json()) as { resultCount?: number };
-    const available = (data.resultCount ?? 0) > 0;
-    cacheSet(cacheKey, available);
-    return available;
+      const data = iosLookupSchema.parse(await response.json());
+      return (data.resultCount ?? 0) > 0;
+    });
   }
 
   static async isAndroidAppAvailable(appId: string): Promise<boolean> {
     const cacheKey = `android:${appId}`;
-    const cached = cacheGet(cacheKey);
-    if (cached !== null) {
-      return cached;
-    }
-
-    try {
+    return resolveCachedAvailability(cacheKey, async () => {
       const gplay = await getGooglePlayScraper();
-      const available = await isAndroidAppAvailableFromStore(gplay, appId);
-      cacheSet(cacheKey, available);
-      return available;
-    } catch {
-      cacheSet(cacheKey, false);
-      return false;
-    }
+      return isAndroidAppAvailableFromStore(gplay, appId);
+    });
   }
 }

@@ -1,21 +1,33 @@
 import { expect, test, describe, mock } from "bun:test";
 import { searchIos, searchAndroid } from "../src/server/stores";
 
-// Mocking fetch for iTunes API
-globalThis.fetch = mock((url: string) => {
+globalThis.fetch = (input: string | URL | Request) => {
+  const url = typeof input === "string"
+    ? input
+    : input instanceof URL
+      ? input.toString()
+      : input.url;
+
   if (url.includes("itunes.apple.com")) {
-    return Promise.resolve(new Response(JSON.stringify({
-      results: [{
-        trackId: 123,
-        trackName: "Mock App",
-        artworkUrl100: "icon.png",
-        artistName: "Mock Dev",
-        bundleId: "com.mock"
-      }]
-    })));
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              trackId: 123,
+              trackName: "Mock App",
+              artworkUrl100: "icon.png",
+              artistName: "Mock Dev",
+              bundleId: "com.mock",
+            },
+          ],
+        }),
+      ),
+    );
   }
+
   return Promise.reject(new Error("Unknown URL"));
-}) as any;
+};
 
 describe("Store Search Utilities", () => {
   test("searchIos should return formatted results", async () => {
@@ -27,12 +39,16 @@ describe("Store Search Utilities", () => {
 
   test("searchAndroid should return formatted results", async () => {
     const mockGplay = {
-      search: mock(() => Promise.resolve([{
-        appId: "com.mock",
-        title: "Mock Android",
-        icon: "icon.png",
-        developer: "Mock Dev"
-      }]))
+      search: mock(() =>
+        Promise.resolve([
+          {
+            appId: "com.mock",
+            title: "Mock Android",
+            icon: "icon.png",
+            developer: "Mock Dev",
+          },
+        ]),
+      ),
     };
     
     const result = await searchAndroid("test", mockGplay);
